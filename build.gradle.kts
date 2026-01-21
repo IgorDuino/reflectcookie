@@ -8,6 +8,7 @@ repositories {
 
 dependencies {
     compileOnly("net.portswigger.burp.extensions:montoya-api:2025.10")
+    implementation("org.xerial:sqlite-jdbc:3.47.1.0")
 }
 
 tasks.withType<JavaCompile> {
