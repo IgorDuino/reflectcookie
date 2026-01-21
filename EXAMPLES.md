@@ -21,7 +21,7 @@ Content-Type: text/html
 1. Detects cookie `user_id` with value `12345`
 2. Parses cookie attributes: HttpOnly=false, Secure=true
 3. Detects that value `12345` is reflected in the response body
-4. Stores cookie in database: `~/.burp/reflectcookie_default.db`
+4. Stores cookie in Burp project data using Persistence API
 5. Creates audit issue with **INFORMATION** severity (no HttpOnly flag)
 
 **Issue Details:**
@@ -57,7 +57,7 @@ Content-Type: text/html
 1. Detects cookie `session_token` with value `abc123xyz`
 2. Parses cookie attributes: HttpOnly=true, Secure=true, SameSite=Strict
 3. Detects that value `abc123xyz` is reflected in the response body
-4. Stores cookie in database
+4. Stores cookie in Burp project data
 5. Creates audit issue with **HIGH** severity (HttpOnly present + sensitive keyword "session")
 
 **Issue Details:**
@@ -89,7 +89,7 @@ Content-Type: application/json
 1. Detects cookie `preferences` with value `dark_mode`
 2. Parses cookie attributes: HttpOnly=true, Secure=false
 3. Detects that value `dark_mode` is reflected in the response body
-4. Stores cookie in database
+4. Stores cookie in Burp project data
 5. Creates audit issue with **LOW** severity (HttpOnly present + non-sensitive name)
 
 **Issue Details:**
@@ -106,22 +106,30 @@ Content-Type: application/json
 
 ---
 
-## Database Schema
+## Data Persistence
 
-The extension stores all cookies in a SQLite database with the following schema:
+The extension uses Burp's native **Persistence API** for storage:
 
-```sql
-CREATE TABLE cookies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    domain TEXT NOT NULL,
-    path TEXT,
-    httponly INTEGER NOT NULL,
-    secure INTEGER NOT NULL,
-    samesite TEXT,
-    first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(name, domain, path)
-);
+### Storage Mechanism
+```java
+// Access persisted data
+PersistedObject persistedData = api.persistence().extensionData();
+
+// Store cookies as serialized string
+persistedData.setString("cookies", serializedCookieData);
+
+// Retrieve cookies
+String data = persistedData.getString("cookies");
+```
+
+### Storage Location
+- **With Burp Project**: Data saved in the `.burp` project file
+- **Without Project**: Data stored in memory (lost on restart)
+
+### Data Format
+Cookies are stored as pipe-delimited strings:
+```
+name|domain|path|httponly|secure|samesite||name2|domain2|path2|httponly2|secure2|samesite2||
 ```
 
 Each cookie is stored only once per unique combination of (name, domain, path).
@@ -151,3 +159,13 @@ Examples of sensitive cookie names:
 - `SESSION`
 - `secret_value`
 - `SSO_TOKEN`
+
+---
+
+## Benefits of Persistence API
+
+1. **Project Integration**: Cookie data automatically included in Burp project files
+2. **No External Files**: No separate database files to manage
+3. **Memory Efficiency**: Data stored in memory when no project is open
+4. **Portability**: Moving a `.burp` project file includes all extension data
+5. **Simplicity**: No database schema or SQL queries needed

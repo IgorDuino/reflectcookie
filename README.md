@@ -4,12 +4,12 @@ A Burp Suite extension that detects reflected cookies in server responses to hel
 
 ## Overview
 
-This extension monitors HTTP responses for cookies that are reflected in the response body. It stores cookie information in a SQLite database and creates audit issues based on the severity of the finding.
+This extension monitors HTTP responses for cookies that are reflected in the response body. It stores cookie information using Burp's native Persistence API and creates audit issues based on the severity of the finding.
 
 ## Features
 
 - **Automatic Cookie Detection**: Monitors all in-scope HTTP responses for cookies
-- **SQLite Database Storage**: Stores cookie information (name, domain, path, HttpOnly, Secure, SameSite) in a local database
+- **Native Burp Persistence**: Stores cookie information (name, domain, path, HttpOnly, Secure, SameSite) using Montoya API's Persistence API
 - **Reflected Cookie Detection**: Identifies when cookie values appear in response bodies
 - **Risk-Based Issue Creation**: Creates audit issues with severity levels based on:
   - **INFORMATION**: Cookie missing HttpOnly flag
@@ -46,16 +46,17 @@ This extension monitors HTTP responses for cookies that are reflected in the res
 2. Browse the target application or run a scan
 3. The extension will automatically:
    - Monitor all in-scope responses
-   - Store cookies in the SQLite database
+   - Store cookies using Burp's persistence mechanism
    - Create issues when reflected cookies are detected
 4. View detected issues in the **Target > Issues** tab
 
-## Database Location
+## Data Storage
 
-The SQLite database is stored at:
-```
-~/.burp/reflectcookie_default.db
-```
+The extension uses Burp's native **Persistence API** (`montoyaApi.persistence().extensionData()`):
+- Data is stored in the Burp project file when a project is open
+- Data is stored in memory when Burp runs without a project file
+- No external database files or dependencies required
+- Cookie data persists across Burp sessions when using project files
 
 ## Issue Details
 
@@ -71,7 +72,7 @@ When a reflected cookie is detected, the extension creates an issue with:
 
 - `Extension.java` - Main extension class
 - `ReflectedCookieHandler.java` - HTTP handler for detecting reflected cookies
-- `CookieDatabase.java` - SQLite database management
+- `CookieDatabase.java` - Persistence layer using Montoya API
 - `CookieInfo.java` - Cookie information model
 
 ### Building and Testing
@@ -86,6 +87,14 @@ When a reflected cookie is detected, the extension creates an issue with:
 # Create JAR
 ./gradlew jar
 ```
+
+## Architecture Benefits
+
+This extension uses Montoya API's native Persistence API instead of external databases:
+- **No external dependencies**: Reduced JAR size from 14MB to 8KB
+- **Project integration**: Data automatically saved with Burp project files
+- **Simplicity**: No database setup or file management required
+- **Resource efficiency**: Burp handles all storage operations
 
 ## Related Resources
 
