@@ -15,6 +15,11 @@ This extension monitors HTTP responses for cookies that are reflected in the res
   - **INFORMATION**: Cookie missing HttpOnly flag
   - **LOW**: Cookie has HttpOnly flag but name is not sensitive
   - **HIGH**: Cookie has HttpOnly flag AND name contains sensitive keywords (session, secret, token, auth, jwt, sid, sso, bearer, key)
+- **UI Dashboard**: A dedicated "Reflect Cookie" tab with:
+  - Statistics panel showing cookie counts and vulnerability summary
+  - Table of all tracked cookies with their attributes
+  - Table of detected vulnerabilities with severity and URL
+  - Cookie ignore list to exclude specific cookies from detection
 
 ## Installation
 
@@ -49,6 +54,38 @@ This extension monitors HTTP responses for cookies that are reflected in the res
    - Store cookies using Burp's persistence mechanism
    - Create issues when reflected cookies are detected
 4. View detected issues in the **Target > Issues** tab
+5. Use the **Reflect Cookie** tab to:
+   - View all tracked cookies and their attributes
+   - See vulnerability summary and statistics
+   - Ignore specific cookies to exclude them from reflection detection
+   - Clear all tracked data
+
+## UI Tab Features
+
+The "Reflect Cookie" tab provides:
+
+### Statistics Panel
+- Total number of tracked cookies
+- Number of ignored cookies
+- Total vulnerabilities detected
+- Count of high-severity issues
+
+### Tracked Cookies Table
+- Cookie name, domain, and path
+- HttpOnly, Secure, and SameSite attributes
+- Checkbox to ignore/unignore cookies
+
+### Vulnerabilities Table
+- Detection timestamp
+- Cookie name and severity
+- URL where reflection was detected
+- Reason for severity classification
+
+### Action Buttons
+- **Refresh**: Manually refresh all data
+- **Clear All Data**: Remove all tracked cookies and vulnerabilities
+- **Ignore Selected Cookie**: Quick ignore for selected cookie
+- **Unignore All**: Reset all ignore settings
 
 ## Data Storage
 
@@ -56,7 +93,7 @@ The extension uses Burp's native **Persistence API** (`montoyaApi.persistence().
 - Data is stored in the Burp project file when a project is open
 - Data is stored in memory when Burp runs without a project file
 - No external database files or dependencies required
-- Cookie data persists across Burp sessions when using project files
+- Cookie data and ignore settings persist across Burp sessions when using project files
 
 ## Issue Details
 
@@ -74,6 +111,8 @@ When a reflected cookie is detected, the extension creates an issue with:
 - `ReflectedCookieHandler.java` - HTTP handler for detecting reflected cookies
 - `CookieDatabase.java` - Persistence layer using Montoya API
 - `CookieInfo.java` - Cookie information model
+- `VulnerabilityInfo.java` - Vulnerability information model
+- `ReflectCookieTab.java` - UI tab component
 
 ### Building and Testing
 

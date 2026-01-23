@@ -10,6 +10,8 @@ This is a Burp Suite Extension that detects reflected cookies in server response
 - **HTTP Handler**: `src/main/java/ReflectedCookieHandler.java` - monitors HTTP responses for reflected cookies
 - **Persistence Manager**: `src/main/java/CookieDatabase.java` - manages cookie storage using Montoya Persistence API
 - **Cookie Model**: `src/main/java/CookieInfo.java` - represents cookie properties
+- **Vulnerability Model**: `src/main/java/VulnerabilityInfo.java` - represents detected vulnerabilities
+- **UI Tab**: `src/main/java/ReflectCookieTab.java` - provides dashboard for cookie and vulnerability management
 - **Build System**: Gradle with Kotlin DSL, Java 17 compatibility
 - **Dependencies**: Montoya API 2025.10 (compile-only only, no runtime dependencies)
 
@@ -24,12 +26,19 @@ This is a Burp Suite Extension that detects reflected cookies in server response
    - LOW: Cookie with HttpOnly but non-sensitive name
    - HIGH: Cookie with HttpOnly AND sensitive keyword in name (session, secret, token, auth, jwt, sid, sso, bearer, key)
 
+### UI Tab Features
+- **Statistics Panel**: Displays counts of cookies, ignored cookies, vulnerabilities, and high-severity issues
+- **Tracked Cookies Table**: Lists all detected cookies with attributes and ignore checkboxes
+- **Vulnerabilities Table**: Shows detected reflected cookie issues with severity and URL
+- **Action Buttons**: Refresh, Clear All Data, Ignore Selected Cookie, Unignore All
+- **Cookie Ignore List**: Persisted list of cookies to exclude from reflection detection
+
 ### Data Persistence
 - Uses `montoyaApi.persistence().extensionData()` for storage
 - Data stored in Burp project file when project is open
 - Data stored in memory when Burp runs without project
 - No external database files or dependencies required
-- Cookie data persists across Burp sessions when using project files
+- Cookie data and ignore settings persist across Burp sessions when using project files
 
 ## Key Development Commands
 
@@ -39,13 +48,14 @@ This is a Burp Suite Extension that detects reflected cookies in server response
 ./gradlew clean    # Clean build artifacts
 ```
 
-The built JAR file will be in `build/libs/` (approximately 8KB) and can be loaded directly into Burp Suite.
+The built JAR file will be in `build/libs/` and can be loaded directly into Burp Suite.
 
 ## Extension Loading in Burp
 
 1. Build the JAR using `./gradlew jar`
 2. In Burp: Extensions > Installed > Add > Select the JAR file
 3. For quick reloading during development: Ctrl/⌘ + click the Loaded checkbox
+4. Access the UI dashboard via the "Reflect Cookie" tab
 
 ## Documentation Structure
 
@@ -61,5 +71,7 @@ This extension is fully functional and includes:
 - Native Burp Persistence API for cookie tracking
 - Risk-based issue generation in Burp's site map
 - Comprehensive logging of detected issues
-- Minimal JAR size (8KB) with no external dependencies
+- UI dashboard with cookie and vulnerability tables
+- Cookie ignore list with persistence
+- No external dependencies
 
