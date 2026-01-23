@@ -4,8 +4,17 @@ import burp.api.montoya.MontoyaApi;
 public class Extension implements BurpExtension {
     @Override
     public void initialize(MontoyaApi montoyaApi) {
-        montoyaApi.extension().setName("My Extension");
+        montoyaApi.extension().setName("Reflect Cookie Detector");
 
-        // TODO Add your code here
+        // Initialize the database using Montoya Persistence API
+        CookieDatabase database = new CookieDatabase(montoyaApi);
+        
+        // Register the HTTP handler to monitor responses
+        ReflectedCookieHandler handler = new ReflectedCookieHandler(montoyaApi, database);
+        montoyaApi.http().registerHttpHandler(handler);
+        
+        montoyaApi.logging().logToOutput("Reflect Cookie Detector extension loaded successfully!");
+        montoyaApi.logging().logToOutput("The extension will monitor all in-scope responses for reflected cookies.");
+        montoyaApi.logging().logToOutput("Cookies will be stored in Burp project data for tracking.");
     }
 }

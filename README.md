@@ -1,104 +1,108 @@
-# Extension Template Project
+# Reflect Cookie Detector
 
-This project was created by PortSwigger to help you quickly start developing extensions in Java.
+A Burp Suite extension that detects reflected cookies in server responses to help identify potential XSS vulnerabilities.
 
-## Contents
-* [Before you start](#before-you-start)
-* [Writing your extension](#writing-your-extension)
-* [Building your extension](#building-your-extension)
-* [Loading the JAR file into Burp](#loading-the-jar-file-into-burp)
-* [Sharing your extension](#sharing-your-extension)
+## Overview
 
+This extension monitors HTTP responses for cookies that are reflected in the response body. It stores cookie information using Burp's native Persistence API and creates audit issues based on the severity of the finding.
 
-## Before you start
+## Features
 
-Before you begin development, make sure that your project's JDK is set to version "21".
+- **Automatic Cookie Detection**: Monitors all in-scope HTTP responses for cookies
+- **Native Burp Persistence**: Stores cookie information (name, domain, path, HttpOnly, Secure, SameSite) using Montoya API's Persistence API
+- **Reflected Cookie Detection**: Identifies when cookie values appear in response bodies
+- **Risk-Based Issue Creation**: Creates audit issues with severity levels based on:
+  - **INFORMATION**: Cookie missing HttpOnly flag
+  - **LOW**: Cookie has HttpOnly flag but name is not sensitive
+  - **HIGH**: Cookie has HttpOnly flag AND name contains sensitive keywords (session, secret, token, auth, jwt, sid, sso, bearer, key)
 
+## Installation
 
-## Writing your extension
+### Prerequisites
 
-To begin development, open the [Extension.java](src/main/java/Extension.java) file. It includes an example of setting your extension's name, which you can customize with your own logic.
+- Burp Suite Professional or Community Edition
+- Java 17 or higher
 
-The template contains the following components for building your extension:
+### Building the Extension
 
-* The `initialize` method. This is the entry point for your extension. It is called when the extension is loaded and receives a [montoyaApi](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html) argument, which provides access to all Montoya API features.
-* The `Extension` class. This implements the BurpExtension interface, so your extension is recognized and loaded by Burp.
+1. Clone this repository
+2. Build the JAR file:
+   ```bash
+   ./gradlew jar
+   ```
+3. The JAR file will be created in `build/libs/extension-template-project.jar`
 
-#### Related resources
+### Loading into Burp Suite
 
-* For more information on Montoya API features, see the [JavaDoc](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html).
-* To explore example extensions, visit our [GitHub repository](https://github.com/PortSwigger/burp-extensions-montoya-api-examples).
-* For more information on creating extensions, see our [documentation](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating).
-* For a beginner tutorial, see [Writing your first extension](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating/first-extension).
-* If you have any questions or need help from the community, join our [Discord channel](https://discord.com/channels/1159124119074381945/1164175825474686996).
+1. In Burp Suite, go to **Extensions > Installed**
+2. Click **Add**
+3. Under **Extension details**, click **Select file**
+4. Select the JAR file from `build/libs/`
+5. Click **Next** to load the extension
 
-### Vibe Coding Your Extension with AI
+## Usage
 
-You can use an LLM to help you write your extension. To support this, we've included a [`CLAUDE.md`](./CLAUDE.md) file and supporting [documentation](./docs) that provide essential context for the model.
+1. Ensure your target is added to Burp's scope
+2. Browse the target application or run a scan
+3. The extension will automatically:
+   - Monitor all in-scope responses
+   - Store cookies using Burp's persistence mechanism
+   - Create issues when reflected cookies are detected
+4. View detected issues in the **Target > Issues** tab
 
-#### Vibe Coding with Claude Code
+## Data Storage
 
-To use this file with Claude Code:
+The extension uses Burp's native **Persistence API** (`montoyaApi.persistence().extensionData()`):
+- Data is stored in the Burp project file when a project is open
+- Data is stored in memory when Burp runs without a project file
+- No external database files or dependencies required
+- Cookie data persists across Burp sessions when using project files
 
-1. Open a terminal and navigate to the `ExtensionTemplateProject` folder.
-2. Run Claude Code using the following command: `claude`.
-3. Prompt Claude to create some code for your extension.
+## Issue Details
 
-Claude should automatically read the contents of the `ExtensionTemplateProject` folder, including the `CLAUDE.md` file, then create draft code for you to review. If you think it hasn't read the `CLAUDE.md` file, directly prompt it to do so before continuing.
+When a reflected cookie is detected, the extension creates an issue with:
+- **Issue Name**: "Reflected Cookie in Response"
+- **Severity**: Based on HttpOnly flag and cookie name
+- **Details**: Cookie properties including domain, path, flags, and SameSite policy
+- **Evidence**: The HTTP request and response containing the reflected cookie
 
-#### Vibe Coding with Other LLMs
+## Development
 
-If you're using an LLM other than Claude Code, prompt the LLM to read the `CLAUDE.md` file and supporting documentation from the `docs` folder, or provide their contents as part of your context window.
+### Project Structure
 
----
+- `Extension.java` - Main extension class
+- `ReflectedCookieHandler.java` - HTTP handler for detecting reflected cookies
+- `CookieDatabase.java` - Persistence layer using Montoya API
+- `CookieInfo.java` - Cookie information model
 
-## Building your extension
+### Building and Testing
 
-When you're ready to test and use your extension, follow these steps to build a JAR file and load it into Burp.
+```bash
+# Build the project
+./gradlew build
 
-### Building the JAR file
+# Run tests
+./gradlew test
 
-To build the JAR file, run the following command in the root directory of this project:
+# Create JAR
+./gradlew jar
+```
 
-* For UNIX-based systems: `./gradlew jar`
-* For Windows systems: `gradlew jar`
+## Architecture Benefits
 
-If successful, the JAR file is saved to `<project_root_directory>/build/libs/<project_name>.jar`. If the build fails, errors are shown in the console. By default, the project name is `extension-template-project`. You can change this in the [settings.gradle.kts](./settings.gradle.kts) file.
+This extension uses Montoya API's native Persistence API instead of external databases:
+- **No external dependencies**: Reduced JAR size from 14MB to 8KB
+- **Project integration**: Data automatically saved with Burp project files
+- **Simplicity**: No database setup or file management required
+- **Resource efficiency**: Burp handles all storage operations
 
+## Related Resources
 
-## Loading the JAR file into Burp
+* [Montoya API JavaDoc](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html)
+* [Burp Extension Documentation](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating)
+* [Example Extensions](https://github.com/PortSwigger/burp-extensions-montoya-api-examples)
 
-To load the JAR file into Burp:
+## License
 
-1. In Burp, go to **Extensions > Installed**.
-2. Click **Add**.
-3. Under **Extension details**, click **Select file**.
-4. Select the JAR file you just built, then click **Open**.
-5. [Optional] Under **Standard output** and **Standard error**, choose where to save output and error messages.
-6. Click **Next**. The extension is loaded into Burp.
-7. Review any messages displayed in the **Output** and **Errors** tabs.
-8. Click **Close**.
+This project uses the Burp Suite Montoya API and follows PortSwigger's extension guidelines.
 
-Your extension is loaded and listed in the **Burp extensions** table. You can test its behavior and make changes to the code as necessary.
-
-### Reloading the JAR file in Burp
-
-If you make changes to the code, you must rebuild the JAR file and reload your extension in Burp for the changes to take effect.
-
-To rebuild the JAR file, follow the steps for [building the JAR file](#building-the-jar-file).
-
-To quickly reload your extension in Burp:
-
-1. In Burp, go to **Extensions > Installed**.
-2. Hold `Ctrl` or `⌘`, and select the **Loaded** checkbox next to your extension.
-
----
-
-## Sharing your extension
-
-Once you've built your extension, we'd love to see what you've created!
-
-Share your extension on our [PortSwigger Discord](https://discord.com/channels/1159124119074381945/1164175825474686996) #extensions channel to get feedback, showcase your work, and connect with other developers.
-Then take it to the next level by submitting your extension to the BApp store, making it available to the community of 80,000+ users worldwide.
-
-For guidance on the submission process, see [Submitting extensions to the BApp store](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating/bapp-store-submitting-extensions).
