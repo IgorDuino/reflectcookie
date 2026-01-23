@@ -17,7 +17,7 @@ public class ReflectedCookieHandler implements HttpHandler {
     private final MontoyaApi api;
     private final CookieDatabase database;
     private final Set<String> reportedIssues;
-    
+
     private static final Set<String> SENSITIVE_KEYWORDS = new HashSet<>(Arrays.asList(
             "session", "secret", "token", "auth", "jwt", "sid", "sso", "bearer", "key"
     ));
@@ -28,7 +28,7 @@ public class ReflectedCookieHandler implements HttpHandler {
         this.reportedIssues = new HashSet<>();
         loadReportedIssues();
     }
-    
+
     private void loadReportedIssues() {
         // Load previously reported issues from persistence
         String data = api.persistence().extensionData().getString("reported_issues");
@@ -43,7 +43,7 @@ public class ReflectedCookieHandler implements HttpHandler {
             api.logging().logToOutput("Loaded " + reportedIssues.size() + " previously reported issues");
         }
     }
-    
+
     private void saveReportedIssues() {
         // Save reported issues to persistence using newline delimiter
         StringBuilder sb = new StringBuilder();
@@ -88,8 +88,11 @@ public class ReflectedCookieHandler implements HttpHandler {
             // Check if cookie value is reflected in response body
             String responseBody = response.bodyToString();
             if (cookieValue != null && !cookieValue.isEmpty() && responseBody.contains(cookieValue)) {
-                // Cookie is reflected, create an issue
-                createReflectedCookieIssue(responseReceived, cookieInfo, cookieValue);
+                // Check if this cookie is ignored
+                if (!database.isIgnored(cookieName, domain)) {
+                    // Cookie is reflected, create an issue
+                    createReflectedCookieIssue(responseReceived, cookieInfo, cookieValue);
+                }
             }
         }
 
@@ -144,17 +147,17 @@ public class ReflectedCookieHandler implements HttpHandler {
     private void createReflectedCookieIssue(HttpResponseReceived responseReceived, CookieInfo cookie, String cookieValue) {
         // Create unique identifier for this issue (cookie name + URL)
         String issueKey = cookie.getName() + ":" + responseReceived.initiatingRequest().url();
-        
+
         // Check if this issue has already been reported
         if (reportedIssues.contains(issueKey)) {
             // Issue already reported, skip creating duplicate
             return;
         }
-        
+
         // Determine severity based on httpOnly flag and cookie name
         AuditIssueSeverity severity;
         String severityReason;
-        
+
         if (!cookie.isHttpOnly()) {
             severity = AuditIssueSeverity.INFORMATION;
             severityReason = "Cookie does not have HttpOnly flag set";
@@ -165,6 +168,18 @@ public class ReflectedCookieHandler implements HttpHandler {
             severity = AuditIssueSeverity.LOW;
             severityReason = "Cookie has HttpOnly flag and name is not sensitive";
         }
+
+        String url = responseReceived.initiatingRequest().url();
+
+        // Track vulnerability in database for UI display
+        VulnerabilityInfo vulnInfo = new VulnerabilityInfo(
+            cookie.getName(),
+            cookieValue,
+            url,
+            severity,
+            severityReason
+        );
+        database.addVulnerability(vulnInfo);
 
         String issueDetail = String.format(
                 "The cookie '%s' with value '%s' is reflected in the response body. " +
@@ -196,7 +211,7 @@ public class ReflectedCookieHandler implements HttpHandler {
                 "Reflected Cookie in Response",
                 issueDetail,
                 null,  // remediation
-                responseReceived.initiatingRequest().url(),
+                url,
                 severity,
                 AuditIssueConfidence.CERTAIN,
                 null,  // background
@@ -206,17 +221,17 @@ public class ReflectedCookieHandler implements HttpHandler {
         );
 
         api.siteMap().add(issue);
-        
+
         // Mark this issue as reported
         reportedIssues.add(issueKey);
         saveReportedIssues();
-        
+
         // Log the issue
         api.logging().logToOutput(String.format(
                 "Reflected cookie detected: %s [Severity: %s] at %s",
                 cookie.getName(),
                 severity,
-                responseReceived.initiatingRequest().url()
+                url
         ));
     }
 
