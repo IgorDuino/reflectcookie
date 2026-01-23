@@ -1,5 +1,6 @@
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.persistence.PersistedObject;
+import burp.api.montoya.scanner.audit.issues.AuditIssueSeverity;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -30,6 +31,7 @@ public class CookieDatabase {
         this.listeners = new CopyOnWriteArrayList<>();
         loadCookies();
         loadIgnoredCookies();
+        loadVulnerabilities();
         api.logging().logToOutput("Cookie database initialized using Montoya Persistence API");
     }
 
@@ -122,6 +124,44 @@ public class CookieDatabase {
         persistedData.setString("ignoredCookies", sb.toString());
     }
 
+    private void loadVulnerabilities() {
+        String data = persistedData.getString("vulnerabilities");
+        if (data != null && !data.isEmpty()) {
+            String[] entries = data.split(ENTRY_DELIMITER_REGEX);
+            for (String entry : entries) {
+                if (entry.isEmpty()) continue;
+                try {
+                    String[] parts = entry.split(FIELD_DELIMITER);
+                    if (parts.length >= 5) {
+                        VulnerabilityInfo vuln = new VulnerabilityInfo(
+                            parts[0], // cookieName
+                            parts[1], // cookieValue
+                            parts[2], // url
+                            AuditIssueSeverity.valueOf(parts[3]), // severity
+                            parts[4]  // reason
+                        );
+                        vulnerabilities.add(vuln);
+                    }
+                } catch (Exception e) {
+                    api.logging().logToError("Error parsing vulnerability entry: " + e.getMessage());
+                }
+            }
+            api.logging().logToOutput("Loaded " + vulnerabilities.size() + " vulnerabilities from persisted storage");
+        }
+    }
+
+    private void saveVulnerabilities() {
+        StringBuilder sb = new StringBuilder();
+        for (VulnerabilityInfo vuln : vulnerabilities) {
+            sb.append(vuln.getCookieName()).append(FIELD_DELIMITER)
+              .append(vuln.getCookieValue()).append(FIELD_DELIMITER)
+              .append(vuln.getUrl()).append(FIELD_DELIMITER)
+              .append(vuln.getSeverity()).append(FIELD_DELIMITER)
+              .append(vuln.getReason()).append(ENTRY_DELIMITER);
+        }
+        persistedData.setString("vulnerabilities", sb.toString());
+    }
+
     public void storeCookie(CookieInfo cookie) {
         String key = generateFullCookieKey(cookie.getName(), cookie.getDomain(), cookie.getPath());
         if (!cookieMap.containsKey(key)) {
@@ -133,6 +173,7 @@ public class CookieDatabase {
 
     public void addVulnerability(VulnerabilityInfo vulnerability) {
         vulnerabilities.add(vulnerability);
+        saveVulnerabilities();
         notifyListeners();
     }
 
@@ -170,6 +211,7 @@ public class CookieDatabase {
         ignoredCookies.clear();
         saveCookies();
         saveIgnoredCookies();
+        saveVulnerabilities();
         notifyListeners();
         api.logging().logToOutput("All cookie data cleared");
     }
