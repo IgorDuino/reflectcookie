@@ -9,6 +9,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
+import static burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.HIGH;
+
 /**
  * UI Tab for Reflect Cookie Detector extension.
  * Displays tracked cookies, found vulnerabilities, and ignore list management.
@@ -238,7 +240,7 @@ public class ReflectCookieTab implements CookieDatabase.DatabaseListener {
             int ignoredCount = database.getIgnoredCookies().size();
             int vulnCount = vulnerabilities.size();
             long highSeverity = vulnerabilities.stream()
-                .filter(v -> v.getSeverity() == burp.api.montoya.scanner.audit.issues.AuditIssueSeverity.HIGH)
+                .filter(v -> v.getSeverity() == HIGH)
                 .count();
             
             statsLabel.setText(String.format(
