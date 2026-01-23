@@ -61,8 +61,11 @@ public class ReflectedCookieHandler implements HttpHandler {
             // Check if cookie value is reflected in response body
             String responseBody = response.bodyToString();
             if (cookieValue != null && !cookieValue.isEmpty() && responseBody.contains(cookieValue)) {
-                // Cookie is reflected, create an issue
-                createReflectedCookieIssue(responseReceived, cookieInfo, cookieValue);
+                // Check if this cookie is ignored
+                if (!database.isIgnored(cookieName, domain)) {
+                    // Cookie is reflected, create an issue
+                    createReflectedCookieIssue(responseReceived, cookieInfo, cookieValue);
+                }
             }
         }
 
@@ -130,6 +133,18 @@ public class ReflectedCookieHandler implements HttpHandler {
             severityReason = "Cookie has HttpOnly flag and name is not sensitive";
         }
 
+        String url = responseReceived.initiatingRequest().url();
+
+        // Track vulnerability in database for UI display
+        VulnerabilityInfo vulnInfo = new VulnerabilityInfo(
+            cookie.getName(),
+            cookieValue,
+            url,
+            severity,
+            severityReason
+        );
+        database.addVulnerability(vulnInfo);
+
         String issueDetail = String.format(
                 "The cookie '%s' with value '%s' is reflected in the response body. " +
                 "This could potentially lead to XSS vulnerabilities.<br><br>" +
@@ -160,7 +175,7 @@ public class ReflectedCookieHandler implements HttpHandler {
                 "Reflected Cookie in Response",
                 issueDetail,
                 null,  // remediation
-                responseReceived.initiatingRequest().url(),
+                url,
                 severity,
                 AuditIssueConfidence.CERTAIN,
                 null,  // background
@@ -176,7 +191,7 @@ public class ReflectedCookieHandler implements HttpHandler {
                 "Reflected cookie detected: %s [Severity: %s] at %s",
                 cookie.getName(),
                 severity,
-                responseReceived.initiatingRequest().url()
+                url
         ));
     }
 
