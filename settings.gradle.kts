@@ -1,1 +1,1 @@
-rootProject.name = "extension-template-project"
+rootProject.name = "CookieReflector"
