@@ -16,6 +16,7 @@ import java.util.Set;
 public class ReflectedCookieHandler implements HttpHandler {
     private final MontoyaApi api;
     private final CookieDatabase database;
+    private final Set<String> reportedIssues;
     
     private static final Set<String> SENSITIVE_KEYWORDS = new HashSet<>(Arrays.asList(
             "session", "secret", "token", "auth", "jwt", "sid", "sso", "bearer", "key"
@@ -24,6 +25,31 @@ public class ReflectedCookieHandler implements HttpHandler {
     public ReflectedCookieHandler(MontoyaApi api, CookieDatabase database) {
         this.api = api;
         this.database = database;
+        this.reportedIssues = new HashSet<>();
+        loadReportedIssues();
+    }
+    
+    private void loadReportedIssues() {
+        // Load previously reported issues from persistence
+        String data = api.persistence().extensionData().getString("reported_issues");
+        if (data != null && !data.isEmpty()) {
+            String[] issues = data.split("\\|\\|");
+            for (String issue : issues) {
+                if (!issue.isEmpty()) {
+                    reportedIssues.add(issue);
+                }
+            }
+            api.logging().logToOutput("Loaded " + reportedIssues.size() + " previously reported issues");
+        }
+    }
+    
+    private void saveReportedIssues() {
+        // Save reported issues to persistence
+        StringBuilder sb = new StringBuilder();
+        for (String issue : reportedIssues) {
+            sb.append(issue).append("||");
+        }
+        api.persistence().extensionData().setString("reported_issues", sb.toString());
     }
 
     @Override
@@ -115,6 +141,15 @@ public class ReflectedCookieHandler implements HttpHandler {
     }
 
     private void createReflectedCookieIssue(HttpResponseReceived responseReceived, CookieInfo cookie, String cookieValue) {
+        // Create unique identifier for this issue (cookie name + URL)
+        String issueKey = cookie.getName() + ":" + responseReceived.initiatingRequest().url();
+        
+        // Check if this issue has already been reported
+        if (reportedIssues.contains(issueKey)) {
+            // Issue already reported, skip creating duplicate
+            return;
+        }
+        
         // Determine severity based on httpOnly flag and cookie name
         AuditIssueSeverity severity;
         String severityReason;
@@ -170,6 +205,10 @@ public class ReflectedCookieHandler implements HttpHandler {
         );
 
         api.siteMap().add(issue);
+        
+        // Mark this issue as reported
+        reportedIssues.add(issueKey);
+        saveReportedIssues();
         
         // Log the issue
         api.logging().logToOutput(String.format(
