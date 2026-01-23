@@ -33,7 +33,8 @@ public class ReflectedCookieHandler implements HttpHandler {
         // Load previously reported issues from persistence
         String data = api.persistence().extensionData().getString("reported_issues");
         if (data != null && !data.isEmpty()) {
-            String[] issues = data.split("\\|\\|");
+            // Use newline as delimiter (safer than || for URLs)
+            String[] issues = data.split("\n");
             for (String issue : issues) {
                 if (!issue.isEmpty()) {
                     reportedIssues.add(issue);
@@ -44,10 +45,10 @@ public class ReflectedCookieHandler implements HttpHandler {
     }
     
     private void saveReportedIssues() {
-        // Save reported issues to persistence
+        // Save reported issues to persistence using newline delimiter
         StringBuilder sb = new StringBuilder();
         for (String issue : reportedIssues) {
-            sb.append(issue).append("||");
+            sb.append(issue).append("\n");
         }
         api.persistence().extensionData().setString("reported_issues", sb.toString());
     }
